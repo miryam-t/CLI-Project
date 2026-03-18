@@ -1,0 +1,212 @@
+//////cli bundle --output c:year b:bundleFile.txt
+using System.CommandLine;
+using System.CommandLine.Parsing;
+
+// 1. הגדרת האופציות
+var languageOption = new Option<string[]>(
+    name: "--language",
+    description: "List of programming languages (java, html, cs, py, js) or 'all'"
+    )
+{ IsRequired=true};
+languageOption.AddAlias("-l");
+
+var outputOption = new Option<FileInfo>(
+    name: "--output",
+    description: "File path and name");
+outputOption.AddAlias("-o");
+
+var noteOption = new Option<bool>(
+    name:"--note",
+    description: "Include the source file path as a comment in the bundle");
+noteOption.AddAlias("-n");
+
+var sortOption = new Option<string>(
+    name: "--sort",
+    description: "Sort files by 'name' (alphabetical) or 'type' (extension)",
+    getDefaultValue: () => "name");
+sortOption.AddAlias("-s");
+
+var removeEmptyLinesOption=new Option<bool>(
+    name: "--remove-empty-lines",
+    description:"Remove empty lines from the source code");
+removeEmptyLinesOption.AddAlias("-r");
+
+var authorOption=new Option<string>(
+    name: "--author",
+    description: "Name of the file creator to be listed at the top");
+authorOption.AddAlias("-a");
+
+
+// 2. הגדרת הפקודה והוספת האופציות אליה
+var bundleCommand = new Command("bundle", "Bundle code files to a single file");
+bundleCommand.AddOption(languageOption);
+bundleCommand.AddOption(outputOption);
+bundleCommand.AddOption(noteOption);
+bundleCommand.AddOption(sortOption);
+bundleCommand.AddOption(removeEmptyLinesOption);
+bundleCommand.AddOption(authorOption);
+
+
+bundleCommand.SetHandler((language, output,note, sort, removeEmptyLines, author) =>
+{
+    //if (output == null)
+    //{
+    //    Console.WriteLine("You must provide --output");
+    //    return;
+    //}
+    try
+    {
+
+        // 1. קבלת כל הקבצים בתיקייה הנוכחית (ורק בה, ובתיקיות המשנה שלה)
+        // 1. זיהוי תיקיית העבודה הנוכחית (איפה שהמשתמש מריץ את הפקודה)
+        var currentDirectory = Directory.GetCurrentDirectory();
+
+        //2.איסוף כל הקבצים בתיקייה(כולל תתי - תיקיות, אך ללא תיקיות מוחרגות)
+        var allFiles = Directory.GetFiles(currentDirectory, "*.*", SearchOption.AllDirectories);
+            //.Where(file => !file.Contains("bin") && !file.Contains("debug") && !file.Contains("obj"))
+            //    .ToList();
+
+        // 2. סינון קבצים לפי שפה ותיקיות אסורות
+                var excludedDirectories = new[] { "bin", "debug", "obj", ".git", ".vs" };
+
+        var filteredFiles = allFiles.Where(file =>
+        {
+            // בדיקה אם הקובץ נמצא בתוך אחת התיקיות שצריך להחריג
+            bool isInExcludedDir = excludedDirectories.Any(dir => file.Contains(Path.DirectorySeparatorChar + dir + Path.DirectorySeparatorChar));
+            if (isInExcludedDir) return false;
+
+            // בדיקת סיומת הקובץ
+            var ext = Path.GetExtension(file).TrimStart('.');
+            if (language.Contains("all")) return true;
+            return language.Contains(ext);
+        }).ToList();
+        // 3. מיון הקבצים
+        // בדיקה אם נמצאו קבצים
+        if (!filteredFiles.Any())
+        {
+            Console.WriteLine("No matching files found.");
+            return;
+        }
+        if (sort == "type")
+        {
+            filteredFiles = filteredFiles.OrderBy(f => Path.GetExtension(f)).ThenBy(f => Path.GetFileName(f)).ToList();
+        }
+        else // ברירת מחדל: לפי שם (א"ב)
+        {
+            filteredFiles = filteredFiles.OrderBy(f => Path.GetFileName(f)).ToList();
+        }
+        // 4. כתיבה לקובץ (שימוש ב-using var החדשני של C#)
+        using var writer = new StreamWriter(output.FullName);
+
+        if (!string.IsNullOrWhiteSpace(author))
+            writer.WriteLine($"// Author: {author}");
+        // 4. כתיבה לקובץ היעד
+        //using (var writer = new StreamWriter(output.FullName))
+        //{
+        //    // כתיבת שם היוצר בראש הקובץ אם צוין/ 4. יצירת קובץ ה-Bundle
+        //    if (!string.IsNullOrWhiteSpace(author))
+        //    {
+        //        writer.WriteLine($"// Author: {author}");
+        //    }
+
+            foreach (var filePath in filteredFiles)
+            {
+                // הוספת הערה עם מקור הקוד אם המשתמש ביקש
+                if (note)
+                {
+                    writer.WriteLine($"// Source: {Path.GetRelativePath(currentDirectory, filePath)}");
+                }
+
+                // קריאת תוכן הקובץ
+                //var lines = File.ReadAllLines(filePath);
+                //if (removeEmptyLines)
+                //lines = lines.Where(line => !string.IsNullOrWhiteSpace(line));
+            var lines = File.ReadLines(filePath);
+            if (removeEmptyLines)
+                lines = lines.Where(line => !string.IsNullOrWhiteSpace(line));
+          
+          
+            foreach (var line in lines)
+                {
+                    //// אם צריך להסיר שורות ריקות, נבדוק אם השורה אינה ריקה
+                    //if (removeEmptyLines && string.IsNullOrWhiteSpace(line))
+                    //{
+                    //    continue;
+                    //}
+                    writer.WriteLine(line);
+                }
+
+                writer.WriteLine(); // שורת רווח בין קבצים לנוחות הקריאה
+            }
+        //}
+        //foreach (var filePath in filteredFiles)
+        //{
+        //    if (note)
+        //        writer.WriteLine($"// Source: {Path.GetRelativePath(currentDirectory, filePath)}");
+
+        //    // קריאת כל השורות וסינון שורות ריקות אם צריך
+        //    var lines = File.ReadLines(filePath);
+        //    if (removeEmptyLines)
+        //        lines = lines.Where(line => !string.IsNullOrWhiteSpace(line));
+
+        //    foreach (var line in lines)
+        //        writer.WriteLine(line);
+
+        //    writer.WriteLine(); // מרווח בין קבצים
+        //}
+        //foreach (var file in filteredFiles)
+        //{
+        //    // כאן נמשיך בשלב הבא את הלוגיקה של כתיבת התוכן, מיון והסרת שורות
+        //    Console.WriteLine($"Adding file: {Path.GetFileName(file)}");
+        //}
+
+        Console.WriteLine($"Success: Bundle created at {output.FullName}");
+        Console.WriteLine("Successfully created bundle file!");
+  
+
+        //File.Create(output.FullName); 
+        //Console.WriteLine("File was created");
+    }
+    catch (DirectoryNotFoundException) {
+        Console.WriteLine("Error: The path provided for the output file is invalid.");
+    }
+    catch(Exception ex)
+    {
+        Console.WriteLine($"An error occurred: {ex.Message}");
+    }
+
+}, languageOption, outputOption, noteOption, sortOption, removeEmptyLinesOption, authorOption);
+
+var createRspCommand = new Command("create-rsp", "Create a response file for the bundle command");
+// 3. הגדרת ה-RootCommand
+var rootCommand = new RootCommand("Root command for File Bundler CLI");
+rootCommand.AddCommand(bundleCommand);
+rootCommand.InvokeAsync(args);
+
+
+//הסבר מפורט על הקוד:
+//1.איסוף וסינון קבצים(LINQ)
+//Directory.GetFiles: הפקודה הזו סורקת את התיקייה. הפרמטר SearchOption.AllDirectories אומר לה להיכנס גם לתוך תיקיות פנימיות.
+
+//החרגת תיקיות: השתמשנו במערך excludedDirectories. הסינון נעשה בעזרת Path.DirectorySeparatorChar (הסימן \ או / תלוי במערכת ההפעלה) כדי לוודא שאנחנו פוסלים את התיקייה עצמה ולא קובץ שבמקרה מכיל את המילה "bin".
+
+//בדיקת שפות: אנחנו מחלצים את הסיומת בעזרת Path.GetExtension ובודקים אם היא קיימת ברשימה שהמשתמש שלח, או אם המשתמש כתב all.
+
+//2. המיון (Sorting)
+//OrderBy: פונקציית LINQ שמאפשרת למיין רשימות.
+
+//אם המשתמש בחר type, אנחנו ממינים קודם לפי הסיומת (GetExtension) ואז בתוך כל סיומת לפי שם הקובץ. אם לא, המיון הוא פשוט לפי שם הקובץ בלבד.
+
+//3. הטיפול בתוכן הקבצים
+//StreamWriter: זהו אובייקט שמאפשר כתיבה יעילה של טקסט לקובץ. ה-using מבטיח שהקובץ ייסגר ויישמר בבטחה גם אם תהיה שגיאה באמצע.
+
+//Path.GetRelativePath: פקודה מעולה! היא הופכת נתיב ארוך (כמו C:\Users\Name\Project\Main.cs) לנתיב קצר שמתחיל מהתיקייה שבה אנחנו נמצאים (כמו Project\Main.cs). זה מה שהתבקש עבור ה-note.
+
+//הסרת שורות ריקות: אנחנו קוראים את הקובץ שורה-שורה (ReadAllLines). אם האופציה removeEmptyLines פעילה, אנחנו משתמשים ב-string.IsNullOrWhiteSpace(line) כדי לדלג על שורות שאין בהן תוכן ממשי.
+//4.טיפול בשגיאות(Error Handling)
+//הקפנו הכל ב-try-catch. אם למשל המשתמש ינסה לשמור קובץ בתיקייה שאין לו הרשאה אליה, או בנתיב לא קיים, האפליקציה לא "תתרסק" אלא תדפיס הודעה ידידותית למשתמש.
+
+// שלום וברכה זה הקובץ הראישון שלי
+
+// הקובץ השני>
+
