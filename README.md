@@ -4,21 +4,20 @@
 
 ## Features ✨
 
-* [cite_start]**Multi-Language Support:** Bundle files by extension (Java, C#, Python, JS, HTML, etc.) or use the `all` keyword.
-* [cite_start]**Smart Filtering:** Automatically excludes build and version control directories like `bin`, `obj`, `debug`, `.vs`, and `.git`.
-* [cite_start]**Custom Sorting:** Sort files alphabetically by name or by file type (extension).
-* [cite_start]**Code Cleaning:** Option to remove empty lines from the source code.
-* [cite_start]**Metadata:** Add the author's name and source file paths as comments within the bundle.
-* [cite_start]**Response Files (RSP):** Interactive wizard to create `.rsp` files for easy command reuse.
+* **Multi-Language Support:** Bundle files by extension (Java, C#, Python, JS, HTML, etc.) or use the `all` keyword.
+* **Smart Filtering:** Automatically excludes build and version control directories like `bin`, `obj`, `debug`, `.vs`, and `.git`.
+* **Custom Sorting:** Sort files alphabetically by name or by file type (extension).
+* **Code Cleaning:** Option to remove empty lines from the source code.
+* **Metadata:** Add the author's name and source file paths as comments within the bundle.
+* **Response Files (RSP):** Interactive wizard to create `.rsp` files for easy command reuse.
 
----
 
 ## 🛠️ How to Run and Install
 
 To use this tool on your machine, follow these steps:
 
 ### 1. Prerequisites
-* [cite_start]Ensure you have the **.NET 8.0 SDK** installed[cite: 1]. You can download it from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/8.0).
+* Ensure you have the **.NET 8.0 SDK** installed[cite: 1]. You can download it from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ### 2. Running from Source (Development Mode)
 If you want to run the code directly without installation:
@@ -52,30 +51,25 @@ To use the command `cli` from **anywhere** on your computer:
 
 ### 💻 Usage Examples
 
-     cli bundle -l cs py -o ./myCode.txt -n -s type -a "Your Name" -r
+  cli bundle -l cs py -o ./myCode.txt -n -s type -a "Your Name" -r
 
 ### The `bundle` Command
 The `bundle` command collects files based on your preferences:
-```bash
-cli bundle -language cs py --output ./myCode.txt --note --sort type --author "Your Name"
+
+  cli bundle -language cs py --output ./myCode.txt --note --sort type --author "Your Name"
 
 ### The create-rsp Command
 Generate a configuration file (Response File) interactively:
 
-Bash
 
-cli create-rsp
+### cli create-rsp
 To run the generated file:
 
-Bash
-
-cli @options.rsp
+     cli @options.rsp
 ### 🏗️ Technologies Used
 
 .NET 8.0 SDK 
 
-
 System.CommandLine (Library for argument parsing) 
-
 
 LINQ (For efficient file filtering and sorting)
